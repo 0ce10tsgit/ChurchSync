@@ -14,7 +14,7 @@ port = 9633
 FORMAT = pyaudio.paInt16  # 16-bit resolution
 CHANNELS = 1              # 2: Stereo, 1: Mono
 RATE = 44100              # 44.1kHz sampling rate
-CHUNK = 1024              # Record in chunks of 1024 samples
+CHUNK = 300              # Record in chunks of 1024 samples
 RECORD_SECONDS = 5        # Duration of recording
 WAVE_OUTPUT_FILENAME = "output_pyaudio.wav"
 WAVE_INPUT = sys.argv[1] if len(sys.argv) > 1 else None  # python server.py song.wav -> stream file instead of loopback
@@ -26,7 +26,6 @@ def audio_stream_UDP():
     server_socket.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,BUFF_SIZE)
 
     server_socket.bind((host_ip, (port)))
-    CHUNK = 10*1024
     p = pyaudio.PyAudio()
     if WAVE_INPUT:
         wf = wave.open(WAVE_INPUT, 'rb')
@@ -48,7 +47,7 @@ def audio_stream_UDP():
                         input=True,
                         frames_per_buffer=CHUNK)
     print('server listening at',(host_ip, (port)),RATE)
-
+    print(socket.gethostbyname(host_name))
     data = None
     sample_rate = RATE
     while True:
@@ -69,6 +68,8 @@ def audio_stream_UDP():
                 time.sleep(max(0, next_send - time.monotonic()))
             else:
                 data = stream.read(CHUNK)
+
+            print("size of packet ",len(data))
             server_socket.sendto(data,client_addr)
             sent += 1
             if time.monotonic() - last_print >= 1:
