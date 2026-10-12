@@ -64,13 +64,17 @@ def audio_stream_UDP():
                     data = wf.readframes(CHUNK)
                 # a file reads instantly, so pace it to real time
                 # (by frames actually read: the last chunk of the file is short)
-                next_send += len(data) / (CHANNELS * wf.getsampwidth()) / RATE
+                frame_bytes = CHANNELS * wf.getsampwidth()
+                next_send += len(data) / frame_bytes / RATE
                 time.sleep(max(0, next_send - time.monotonic()))
             else:
                 data = stream.read(CHUNK)
+                frame_bytes = CHANNELS * p.get_sample_size(FORMAT)
 
             print("size of packet ",len(data))
-            server_socket.sendto(data,client_addr)
+            SAFE = (1400 // frame_bytes) * frame_bytes  # keep slices frame-aligned so samples never split across packets
+            for i in range(0, len(data), SAFE):
+                server_socket.sendto(data[i:i+SAFE], client_addr)
             sent += 1
             if time.monotonic() - last_print >= 1:
                 print(f'sent {sent / (time.monotonic() - last_print):.2f} packets/s (real time = {RATE / CHUNK:.2f})')

@@ -2,10 +2,11 @@
 ## This is client code to receive video and audio frames over UDP
 
 import socket
+import sys
 import threading, wave, pyaudio, time, queue
 
 host_name = socket.gethostname()
-host_ip = '129.161.209.129'#  socket.gethostbyname(host_name)
+host_ip = sys.argv[1] if len(sys.argv) > 1 else '127.0.0.1'
 print(host_ip)
 port = 9633
 ## For details visit: www.pyshine.com
