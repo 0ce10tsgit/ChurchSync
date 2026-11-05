@@ -1,6 +1,0 @@
-# pick pyaudio based on system cus windows needs patch for loopback
-pyaudio
-pyaudiowpatch; sys_platform == "win32"
-# Opus encoding/decoding which bundles ffmpeg (its only like 40mb its fine)
-av
-numpy
