@@ -1,10 +1,15 @@
 import blessed from "blessed";
+import { startSending } from "../audio/send.js";
+import { options } from "../options.js";
 import { startControlServer } from "../shared/control.js";
+import { localAddresses } from "../shared/net.js";
 import { DEFAULT_PORT, deriveKey } from "../shared/protocol.js";
 
 const SLIDER_MAX_MS = 1000;
 const SLIDER_STEP_MS = 10;
 const BAR_WIDTH = 40;
+const METER_WIDTH = 30;
+const METER_FLOOR_DB = -60;
 
 type Screen = blessed.Widgets.Screen;
 
@@ -44,14 +49,19 @@ function showBroadcaster(screen: Screen, passphrase: string) {
     title.setContent(text);
     screen.render();
   };
-  setTitle(`Broadcasting on port ${DEFAULT_PORT}`);
+  const addresses = localAddresses();
+  const where = addresses.length
+    ? addresses.map((a) => `${a.address} (${blessed.escape(a.name)})`).join(", ")
+    : "no network address found";
+  const port = options.port ?? DEFAULT_PORT;
+  setTitle(`Broadcasting on port ${port}  |  receivers connect to: {bold}${where}{/}`);
 
   const list = blessed.list({
     parent: screen,
-    top: 1,
+    top: 2,
     left: 0,
     width: "100%",
-    height: "100%-7",
+    height: "100%-8",
     border: "line",
     keys: true,
     vi: true,
@@ -90,13 +100,42 @@ function showBroadcaster(screen: Screen, passphrase: string) {
     content: "Tab: switch focus   m/Enter: mute selected   a: mute all   left/right: delay   Ctrl+C: quit",
   });
 
+  const key = deriveKey(passphrase);
   const server = startControlServer({
-    port: DEFAULT_PORT,
-    key: deriveKey(passphrase),
+    port,
+    key,
     onReceiver: () => refresh(),
     onGone: () => refresh(),
-    onError: (err) => setTitle(`{red-fg}Cannot listen on port ${DEFAULT_PORT}: ${err.message}{/}`),
+    onError: (err) => setTitle(`{red-fg}Cannot listen on port ${port}: ${blessed.escape(err.message)}{/}`),
   });
+
+  // audio goes to every connected receiver, muted or not; they decide whether to play it
+  let inputError = "";
+  const sender = startSending({
+    key,
+    targets: () => server.receivers(),
+    onError: (err) => (inputError = err.message),
+  });
+
+  const meter = blessed.text({ parent: screen, top: 1, left: 1, tags: true });
+  const wiringHint =
+    process.platform === "linux" && !options.win ? '   wire "ChurchSync Send" in your PipeWire graph' : "";
+  let held = 0;
+  function drawMeter() {
+    const { packets, level } = sender.stats();
+    held = Math.max(level, held * 0.8); // fall off gradually so the bar is readable
+    if (inputError) {
+      meter.setContent(`{red-fg}Input error: ${blessed.escape(inputError)}{/}`);
+    } else {
+      const db = held > 0 ? Math.max(METER_FLOOR_DB, 20 * Math.log10(held)) : METER_FLOOR_DB;
+      const filled = Math.round(((db - METER_FLOOR_DB) / -METER_FLOOR_DB) * METER_WIDTH);
+      const bar = "#".repeat(filled) + "-".repeat(METER_WIDTH - filled);
+      const reading = db <= METER_FLOOR_DB ? "-inf" : db.toFixed(0);
+      meter.setContent(`Input [${bar}] ${reading} dB   ${packets} packets${wiringHint}`);
+    }
+    screen.render();
+  }
+  setInterval(drawMeter, 100);
 
   let selected = 0;
   list.on("select item", (_item, index) => {

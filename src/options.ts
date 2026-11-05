@@ -6,11 +6,14 @@ function valueOf(flag: string): string | undefined {
 }
 
 const winDevice = valueOf("--win-device");
+const port = Number(valueOf("--port"));
 
-/** Debug flags, read from the command line once at startup. */
+/** Command-line flags, read once at startup. */
 export const options = {
-  /** capture through the OS audio API (WASAPI on Windows) instead of PipeWire */
+  /** debug: capture through the OS audio API (WASAPI on Windows) instead of PipeWire */
   win: args.includes("--win") || winDevice !== undefined,
-  /** input device to capture, matched by part of its name; default input if unset */
+  /** debug: input device to capture, matched by part of its name; default input if unset */
   winDevice,
+  /** broadcaster listening port, if the default is taken */
+  port: Number.isInteger(port) && port > 0 && port < 65536 ? port : undefined,
 };

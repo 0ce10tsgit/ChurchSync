@@ -55,7 +55,7 @@ function readMessages(socket: net.Socket, onMessage: (msg: ControlMessage) => vo
 }
 
 /** Socket addresses can come back as ::ffff:1.2.3.4; UDP source checks want plain IPv4. */
-function plainAddress(address: string | undefined): string {
+export function plainAddress(address: string | undefined): string {
   return (address ?? "").replace(/^::ffff:/, "");
 }
 
@@ -166,7 +166,8 @@ export function startControlServer(opts: ControlServerOptions): ControlServer {
     });
   });
   server.on("error", opts.onError);
-  server.listen(opts.port, opts.host);
+  // IPv4 only, like the audio socket; a dual-stack bind can succeed on Windows while another program holds the IPv4 port
+  server.listen(opts.port, opts.host ?? "0.0.0.0");
 
   return {
     receivers: () => [...receivers],

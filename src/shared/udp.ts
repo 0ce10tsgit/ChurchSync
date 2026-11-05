@@ -10,8 +10,10 @@ export function listenForAudio(
   allowedIp: string,
   key: Buffer,
   onPacket: (packet: AudioPacket) => void,
+  onError: (err: Error) => void,
 ): dgram.Socket {
   const socket = dgram.createSocket("udp4");
+  socket.on("error", onError);
   socket.on("message", (msg, rinfo) => {
     if (rinfo.address !== allowedIp) return;
     const packet = decodeAudio(msg, key);

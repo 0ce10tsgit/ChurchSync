@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { PassThrough, Readable } from "node:stream";
 import { options } from "../options.js";
 import { CHANNELS, SAMPLE_RATE } from "./format.js";
+import { nodeProps } from "./pipewire.js";
 
 export interface CaptureOptions {
   /** PipeWire node name or id; omit for the default source */
@@ -27,8 +28,8 @@ function capturePipeWire({ target, monitor }: CaptureOptions): Readable {
     "--channels", String(CHANNELS),
   ];
   if (target) args.push("--target", target);
-  if (monitor) args.push("-P", "stream.capture.sink=true");
-  args.push("-");
+  const extra: Record<string, string> = monitor ? { "stream.capture.sink": "true" } : {};
+  args.push("-P", nodeProps("ChurchSync-Send", "ChurchSync Send", extra), "-");
 
   const proc = spawn("pw-cat", args, { stdio: ["ignore", "pipe", "inherit"] });
   proc.on("error", (err) => proc.stdout.destroy(err));
