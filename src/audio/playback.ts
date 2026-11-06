@@ -12,6 +12,7 @@ export function openPlayback(): Writable {
     "pw-cat",
     [
       "--playback",
+      "--raw",
       "--format", "s16",
       "--rate", String(SAMPLE_RATE),
       "--channels", String(CHANNELS),

@@ -23,6 +23,7 @@ export function capture(opts: CaptureOptions = {}): Readable {
 function capturePipeWire({ target, monitor }: CaptureOptions): Readable {
   const args = [
     "--record",
+    "--raw",
     "--format", "s16",
     "--rate", String(SAMPLE_RATE),
     "--channels", String(CHANNELS),
